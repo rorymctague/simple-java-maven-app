@@ -5,6 +5,7 @@ pipeline {
             image 'maven:3.8.1-openjdk-11'
             args '-v /var/run/docker.sock:/var/run/docker.sock -v $WORKSPACE:/workspace'
         }
+        reuseNode true
     }
     environment {
         COVERAGE_TARGET = 'target/site/jacoco' // Relative path for JaCoCo reports
