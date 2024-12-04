@@ -54,7 +54,7 @@ pipeline {
 
     post {
         always {
-            // Clean up or other post-actions
+            echo 'Pipeline execution completed, cleaning up!'
         }
     }
 }
