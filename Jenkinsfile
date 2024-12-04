@@ -1,60 +1,58 @@
 pipeline {
-    agent any
+    agent {
+        // Use a Docker container with Maven and JDK pre-installed
+        docker {
+            image 'maven:3.8.1-openjdk-11'
+            args '-v /var/run/docker.sock:/var/run/docker.sock -v $WORKSPACE:/workspace'
+        }
+    }
+    environment {
+        COVERAGE_TARGET = 'target/site/jacoco' // Relative path for JaCoCo reports
+    }
     stages {
-        /*stage('Build') { 
+        stage('Checkout') {
             steps {
-                sh 'mvn -B -DskipTests clean package' 
+                // Checkout the repository
+                checkout scm
             }
         }
-        stage('Test') {
+        stage('Build') {
             steps {
+                // Run Maven clean and package
+                sh 'mvn clean package -Dmaven.test.failure.ignore=true'
+            }
+        }
+        stage('Test with JaCoCo') {
+            steps {
+                // Run tests and generate JaCoCo coverage reports
                 sh 'mvn test'
             }
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
-        }*/
-
-        stage('Build and Test') {
-            steps {
-                script {
-                    // Run Maven build, which includes tests and JaCoCo coverage generation
-                    sh "mvn clean verify"
+                    // Publish HTML coverage report
+                    publishHTML(target: [
+                        reportDir: "${env.COVERAGE_TARGET}",
+                        reportFiles: 'index.html',
+                        reportName: 'JaCoCo Code Coverage Report'
+                    ])
                 }
             }
         }
-
-        stage('Publish Coverage Report') {
+        stage('Post Build - Record Coverage') {
             steps {
-                script {
-                    // Use the Coverage Plugin to publish JaCoCo reports (JaCoCo .exec or .xml file)
-                    publishCoverage(
-                        adapters: [jacocoAdapter(coverageReportFile: '**/target/jacoco.xml')],  // Use JaCoCo XML report
-                        sourceFileResolver: sourceFiles('**/src/main/java')
-                    )
-                }
-            }
-        }
-
-        stage('Publish HTML Report') {
-            steps {
-                // Use HTML Publisher plugin to show JaCoCo HTML report in Jenkins
-                publishHTML(
-                    target: [
-                        reportName: 'JaCoCo Coverage Report',
-                        reportDir: 'target/site/jacoco',
-                        reportFiles: 'index.html'
+                // Use the Coverage plugin to display code coverage metrics
+                recordCoverage(
+                    tools: [
+                        jacoco(execPattern: '**/jacoco.exec')
                     ]
                 )
             }
         }
     }
-
     post {
         always {
-            echo 'Pipeline execution completed, cleaning up!'
+            // Clean up workspace after the build
+            cleanWs()
         }
     }
 }
